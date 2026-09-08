@@ -1,0 +1,42 @@
+/* MPS-PHP – Application styles */
+
+body { background: #f8f9fa; font-size: 14px; }
+
+.navbar-brand small { font-size: 0.75rem; }
+
+/* ── Metric cards ─────────────────────────────────────────────────────────── */
+.card .fw-bold.fs-5 { font-size: 1.25rem !important; }
+
+/* ── Table enhancements ───────────────────────────────────────────────────── */
+.table th { white-space: nowrap; font-size: 12px; }
+.table td { font-size: 12px; }
+.sticky-top { position: sticky; top: 0; z-index: 2; }
+
+/* ── Coverage table coloring ─────────────────────────────────────────────── */
+.cell-red     { background-color: #FFCDD2 !important; color: #B71C1C; font-weight: 600; }
+.cell-green   { background-color: #C8E6C9 !important; color: #1B5E20; }
+.cell-gray    { background-color: #F5F5F5 !important; color: #757575; }
+.cell-receipt { background-color: #E8F5E9 !important; }
+.coverage-part td { background-color: #DDEEFF !important; }
+
+/* ── Line output plan coloring ───────────────────────────────────────────── */
+.output-fg      td { background-color: #C8E6C9 !important; color: #1B5E20; font-weight: 600; }
+.output-shortage td { background-color: #FFCDD2 !important; color: #B71C1C; font-weight: 600; }
+.output-planned  td { background-color: #ECEFF1 !important; color: #263238; }
+
+/* ── Nav tabs ────────────────────────────────────────────────────────────── */
+.nav-tabs .nav-link { font-size: 13px; padding: 6px 10px; }
+.nav-tabs .nav-link.active { font-weight: 600; }
+
+/* ── Sidebar card ────────────────────────────────────────────────────────── */
+.card-header { font-size: 13px; padding: 6px 12px; }
+
+/* ── Details/summary ─────────────────────────────────────────────────────── */
+details > summary { cursor: pointer; }
+details > summary:hover { text-decoration: underline; }
+
+/* ── Scrollable tables ───────────────────────────────────────────────────── */
+.table-responsive { border: 1px solid #dee2e6; border-radius: 4px; }
+
+/* ── Section header accent ───────────────────────────────────────────────── */
+h6 { border-left: 3px solid #464feb; padding-left: 8px; margin-top: 1rem; }

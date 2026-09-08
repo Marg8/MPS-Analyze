@@ -1,0 +1,43 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Virtual environments ─────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Streamlit ────────────────────────────────────────────────────────────────
+.streamlit/secrets.toml
+
+# ── Secrets / environment ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Generated / business data (do NOT commit real data) ──────────────────────
+Result.xlsx
+*_result.xlsx
+scheduled_result.*
+ma3_summary.xlsx
+build_analysis.xlsx
+component_demand.xlsx
+cost_traceability.xlsx
+rm_coverage_report.xlsx
+line_output_plan.xlsx
+
+# ── Editor / OS ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

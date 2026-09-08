@@ -1,0 +1,207 @@
+// ============================================================
+// MPS NORMALIZED DATA MODEL
+// Power Query M – Entry point query: "Data"
+// ============================================================
+let
+
+    // ─── 1. MASTER TABLES ────────────────────────────────────
+    // Hrs: sum all routing operations per material → hours/unit
+    HrsRaw = Excel.CurrentWorkbook(){[Name="Hrs"]}[Content],
+    HrsTrim = Table.TransformColumnNames(HrsRaw, each Text.Trim(_)),
+    HrsMaterials = Table.SelectColumns(
+        HrsTrim,
+        {"Material", "Std x Hr"},
+        MissingField.UseNull
+    ),
+    HrsTyped = Table.TransformColumnTypes(HrsTrim, {
+        {"Material", type text},
+        {"Std x Hr", type number}
+    }),
+    HrsClean = Table.SelectRows(
+        HrsTyped,
+        each [Material] <> null and [Material] <> ""
+              and [#"Std x Hr"] <> null and [#"Std x Hr"] > 0
+    ),
+    HrsGrouped = Table.Group(
+        HrsClean,
+        {"Material"},
+        {{"HrsPerUnit", each List.Sum([#"Std x Hr"]), type number}}
+    ),
+
+    // Cost: Std Cost per part number
+    CostRaw = Excel.CurrentWorkbook(){[Name="Cost"]}[Content],
+    CostTrim = Table.TransformColumnNames(CostRaw, each Text.Trim(_)),
+    CostTyped = Table.TransformColumnTypes(CostTrim, {
+        {"PN", type text},
+        {"Std Cost", type number}
+    }),
+    CostClean = Table.SelectRows(
+        CostTyped,
+        each [PN] <> null and [PN] <> ""
+    ),
+    CostFinal = Table.RenameColumns(CostClean, {{"PN", "Material"}}),
+
+    // Std Pack: Delivery unit per material
+    SPRaw = Excel.CurrentWorkbook(){[Name="Std Pack"]}[Content],
+    SPTrim = Table.TransformColumnNames(SPRaw, each Text.Trim(_)),
+    SPTyped = Table.TransformColumnTypes(SPTrim, {
+        {"Material",      type text},
+        {"Delivery unit", type number}
+    }),
+    SPClean = Table.SelectRows(
+        SPTyped,
+        each [Material] <> null and [Material] <> ""
+    ),
+    SPDistinct = Table.Distinct(SPClean, {"Material"}),
+    SPFinal = Table.SelectColumns(
+        SPDistinct,
+        {"Material", "Delivery unit"},
+        MissingField.UseNull
+    ),
+
+    // ─── 2. ORDERS ───────────────────────────────────────────
+    OrdersRaw  = Excel.CurrentWorkbook(){[Name="Entry Open Orders"]}[Content],
+    OrdersTrim = Table.TransformColumnNames(OrdersRaw, each Text.Trim(_)),
+
+    ToNumber = (x as any) as number =>
+        let t = try Text.Trim(Text.From(x)) otherwise ""
+        in  if t = "" or t = "-" then 0
+            else try Number.From(x) otherwise 0,
+
+    AddQtyNum = Table.AddColumn(
+        OrdersTrim,
+        "QtyNum",
+        each ToNumber(Record.FieldOrDefault(_, "Qty", 0)),
+        type number
+    ),
+
+    // ─── 3. JOIN: Orders → Hrs ────────────────────────────────
+    JoinHrs = Table.NestedJoin(
+        AddQtyNum,    {"Product code"},
+        Table.Buffer(HrsGrouped), {"Material"},
+        "_Hrs", JoinKind.LeftOuter
+    ),
+    ExpandHrs = Table.ExpandTableColumn(
+        JoinHrs, "_Hrs",
+        {"HrsPerUnit"}, {"HrsPerUnit"}
+    ),
+
+    // ─── 4. JOIN: → Cost ──────────────────────────────────────
+    JoinCost = Table.NestedJoin(
+        ExpandHrs,    {"Product code"},
+        Table.Buffer(CostFinal), {"Material"},
+        "_Cost", JoinKind.LeftOuter
+    ),
+    ExpandCost = Table.ExpandTableColumn(
+        JoinCost, "_Cost",
+        {"Std Cost"}, {"Std Cost"}
+    ),
+
+    // ─── 5. JOIN: → Std Pack ──────────────────────────────────
+    JoinSP = Table.NestedJoin(
+        ExpandCost,   {"Product code"},
+        Table.Buffer(SPFinal), {"Material"},
+        "_SP", JoinKind.LeftOuter
+    ),
+    ExpandSP = Table.ExpandTableColumn(
+        JoinSP, "_SP",
+        {"Delivery unit"}, {"Std Pack (Master)"}
+    ),
+
+    // ─── 6. CALCULATED COLUMNS ───────────────────────────────
+    AddTotalHrs = Table.AddColumn(
+        ExpandSP,
+        "Total Hours",
+        each
+            let q = ToNumber([QtyNum]),
+                h = if [HrsPerUnit] = null then 0 else [HrsPerUnit]
+            in  q * h,
+        type number
+    ),
+
+    AddTotalValue = Table.AddColumn(
+        AddTotalHrs,
+        "Total Value",
+        each
+            let q = ToNumber([QtyNum]),
+                c = if [Std Cost] = null then 0 else [Std Cost]
+            in  q * c,
+        type number
+    ),
+
+    // ─── 7. LINE GROUP ───────────────────────────────────────
+    AddLineGroup = Table.AddColumn(
+        AddTotalValue,
+        "LineGroup",
+        each
+            let m = Text.Upper(Text.Trim(Text.From(
+                        Record.FieldOrDefault(_, "MRP", "")
+                    )))
+            in
+                if List.Contains({"HC8","H3H"}, m) then "HC8_H3H"
+                else if List.Contains({"H5C","HC9"}, m) then "H5C_HC9"
+                else if List.Contains({"HC4","A9R"}, m) then "HC4_A9R"
+                else m,
+        type text
+    ),
+
+    // ─── 8. DATE DIMENSIONS ──────────────────────────────────
+    AddPlanDate = Table.AddColumn(
+        AddLineGroup,
+        "PlanningDate",
+        each
+            let c = Record.FieldOrDefault(_, "Plan Request Date", null),
+                r = Record.FieldOrDefault(_, "Requested date", null)
+            in  if c <> null then c else r,
+        type date
+    ),
+
+    AddMonth = Table.AddColumn(
+        AddPlanDate,
+        "Month",
+        each if [PlanningDate] = null then null
+             else Text.From(Date.Year([PlanningDate]))
+                  & "-" & Text.PadStart(Text.From(Date.Month([PlanningDate])), 2, "0"),
+        type text
+    ),
+
+    AddMonthName = Table.AddColumn(
+        AddMonth,
+        "Month Name",
+        each if [PlanningDate] = null then null
+             else Date.ToText([PlanningDate], [Format="MMM", Culture="en-US"]),
+        type text
+    ),
+
+    AddQuarter = Table.AddColumn(
+        AddMonthName,
+        "Quarter",
+        each if [PlanningDate] = null then null
+             else "Q" & Text.From(Date.QuarterOfYear([PlanningDate])),
+        type text
+    ),
+
+    AddWeekNum = Table.AddColumn(
+        AddQuarter,
+        "ISOWeek",
+        each if [PlanningDate] = null then null
+             else Date.WeekOfYear([PlanningDate], Day.Monday),
+        Int64.Type
+    ),
+
+    // ─── 9. FINAL CLEANUP ────────────────────────────────────
+    TypeFinal = Table.TransformColumnTypes(
+        AddWeekNum,
+        {
+            {"Qty",          type number},
+            {"Total Hours",  type number},
+            {"Total Value",  type number},
+            {"HrsPerUnit",   type number},
+            {"Std Cost",     type number}
+        }
+    ),
+
+    Final = Table.RemoveColumns(TypeFinal, {"QtyNum"})
+
+in
+    Final

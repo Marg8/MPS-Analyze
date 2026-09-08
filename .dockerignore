@@ -1,0 +1,45 @@
+# Keep the build context small and the image clean/secure.
+
+# ── Version control ──────────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+
+# ── Python caches / envs ─────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Editor / OS ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Docs / local scripts not needed at runtime ───────────────────────────────
+*.md
+run_streamlit.sh
+stop_streamlit.sh
+
+# ── Secrets / environment ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# ── Generated output artifacts ───────────────────────────────────────────────
+Result.xlsx
+*_result.xlsx
+scheduled_result.*
+
+# NOTE: MPS.xlsx / Excel.xlsx are business data. For production, prefer mounting
+# them as a volume instead of baking them into the image (see docker-compose.yml).
+# Uncomment the next two lines to exclude them from the image:
+# MPS.xlsx
+# Excel.xlsx

@@ -1,0 +1,4 @@
+uploads/
+vendor/cache/
+.php-cs-fixer.cache
+*.log

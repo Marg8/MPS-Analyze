@@ -1,0 +1,7 @@
+# Pinned for reproducible builds (versions verified in the runtime environment).
+# Update deliberately and re-test after bumping.
+streamlit==1.59.2
+pandas==3.0.3
+openpyxl==3.1.5
+matplotlib==3.11.1
+jinja2==3.1.6
